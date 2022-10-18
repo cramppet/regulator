@@ -208,7 +208,12 @@ def main():
     known_hosts = sorted(list(set([line.strip() for line in handle.readlines()])))
     for host in known_hosts:
       if host != args['domain']:
-        trie[host] = True
+        tokens = tokenize([host])
+        if len(tokens) > 0 and len(tokens[0]) > 0 and len(tokens[0][0]) > 0:
+          trie[host] = True
+        else:
+          logging.warning(f'Rejecting malformed input: {host}')
+          known_hosts.remove(host)
 
   logging.info(f'Loaded {len(known_hosts)} observations')
   logging.info('Building table of all pairwise distances...')
