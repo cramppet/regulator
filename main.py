@@ -185,14 +185,14 @@ def main():
 
   logging.basicConfig(format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, filename=LOGFILE_NAME, filemode='a')
   parser = argparse.ArgumentParser(description='DNS Regulator')
-  parser.add_argument('-t', '--threshold', required=False, type=int, default=500, help='threshold to start performing ratio test')
+  parser.add_argument('-th', '--threshold', required=False, type=int, default=500, help='threshold to start performing ratio test')
   parser.add_argument('-mr', '--max-ratio', required=False, type=float, default=25.0, help='ratio test parameter R: len(Synth)/len(Obs) < R')
   parser.add_argument('-ml', '--max-length', required=False, type=int, default=1000, help='maximum rule length for global search')
   parser.add_argument('-dl', '--dist-low', required=False, type=int, default=2, help='lower bound on string edit distance range')
   parser.add_argument('-dh', '--dist-high', required=False, type=int, default=10, help='upper bound on string edit distance range')
-  parser.add_argument('domain', help='the domain to target')
-  parser.add_argument('hosts', help='the observed hosts file')
-  parser.add_argument('output', help='output filename')
+  parser.add_argument('-t', '--target', required=True, type=str, help='the domain to target')
+  parser.add_argument('-f', '--hosts', required=True, type=str, help='the observed hosts file')
+  parser.add_argument('-o', '--output', required=True, type=str, help='output filename')
   args = vars(parser.parse_args())
 
   logging.info(f'REGULATOR starting: MAX_RATIO={args["max_ratio"]}, THRESHOLD={args["threshold"]}')
@@ -207,7 +207,7 @@ def main():
   with open(args['hosts'], 'r') as handle:
     known_hosts = sorted(list(set([line.strip() for line in handle.readlines()])))
     for host in known_hosts:
-      if host != args['domain']:
+      if host != args['target']:
         tokens = tokenize([host])
         if len(tokens) > 0 and len(tokens[0]) > 0 and len(tokens[0][0]) > 0:
           trie[host] = True
@@ -229,7 +229,7 @@ def main():
     closures = edit_closures(known_hosts, delta=k)
     for closure in closures:
       if len(closure) > 1:
-        r = closure_to_regex(args['domain'], closure)
+        r = closure_to_regex(args['target'], closure)
         # This is probably the only place you'd want to apply this check; rules
         # inferred using this method tend to be very big which makes this part
         # slow, especially at scale.
@@ -249,7 +249,7 @@ def main():
       continue
 
     # First chance: try ngrams first because they are the shortest
-    r = closure_to_regex(args['domain'], keys)
+    r = closure_to_regex(args['target'], keys)
     if r not in new_rules and is_good_rule(r, len(keys), args['threshold'], args['max_ratio']):
       new_rules.add(r)
       
@@ -259,7 +259,7 @@ def main():
       keys = trie.keys(prefix)
 
       # Second chance: use prefix tokens starting with the ngram
-      r = closure_to_regex(args['domain'], keys)
+      r = closure_to_regex(args['target'], keys)
       if r not in new_rules and is_good_rule(r, len(keys), args['threshold'], args['max_ratio']):
         if last is None or not prefix.startswith(last):
           last = prefix
@@ -273,7 +273,7 @@ def main():
           closures = edit_closures(keys, delta=k)
           for closure in closures:
             # Third chance: deconstruct prefix using edit distance
-            r = closure_to_regex(args['domain'], closure)
+            r = closure_to_regex(args['target'], closure)
             if r not in new_rules and is_good_rule(r, len(closure), args['threshold'], args['max_ratio']):
               new_rules.add(r)
 
