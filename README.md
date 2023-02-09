@@ -17,18 +17,17 @@ For more information see the blog post here: https://cramppet.github.io/regulato
 
 ## Install
 
-1. `pip3 install -r requirements.txt`
+1. clone the repository
+2. install the dependencies `pip3 install -r requirements.txt`
 
 ## Usage
 
 1. Run your subdomain enumeration tool of choice
-2. Supply the hostnames found to REGULATOR: `python3 main.py <example.com> <hosts-file> <output-file>`
-3. Use the learned rules to generate brute force guesses: `make_brute_list.sh`
+2. Supply the hostnames found to REGULATOR: `python3 main.py -t <target.com> -f <hosts-file> -o <output-file>`
 
 # Example
 
-1. `python3 main.py adobe.com adobe adobe.rules`
-2. `make_brute_list.sh adobe.rules adobe.brute`
+1. `python3 main.py -t adobe.com -f adobe.subs -o adobe.brute`
 3. `puredns resolve adobe.brute --write adobe.valid`
 
 Be advised that the discovered hosts will overlap with your original input data.
