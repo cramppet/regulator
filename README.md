@@ -31,8 +31,7 @@ For more information see the blog post here: https://cramppet.github.io/regulato
 3. `puredns resolve adobe.brute --write adobe.valid`
 
 Be advised that the discovered hosts will overlap with your original input data.
-You can deduplicate with:
-
-1. `sort -u -o adobe.valid adobe.valid `
-2. `sort -u -o adobe adobe`
-3. `comm -23 adobe.valid adobe > adobe.final`
+If you want the subdomains that were not previously found by the subdomain 
+enumeration tool, use the following command: 
+ 
+ `comm -23 <(sort -u adobe.valid) <(sort -u adobe.subs) > adobe.final`
