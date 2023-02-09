@@ -11,6 +11,7 @@ import tldextract
 import editdistance
 
 from dank.DankEncoder import DankEncoder
+from dank.DankGenerator import DankGenerator
 
 
 MEMO = {}
@@ -179,20 +180,26 @@ def is_good_rule(regex: str, nkeys: int, threshold: int, max_ratio: float) -> bo
   nwords = e.num_words(1,256)
   return nwords < threshold or (nwords/nkeys) < max_ratio
 
+def sort_and_unique(file_name: str):
+  with open(file_name, "r") as file:
+    data = file.readlines()
+    data = sorted(set(data))
+  with open(file_name, "w") as file:
+    file.writelines(data)
 
 def main():
   global DNS_CHARS, MEMO
 
   logging.basicConfig(format='%(asctime)-15s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO, filename=LOGFILE_NAME, filemode='a')
   parser = argparse.ArgumentParser(description='DNS Regulator')
-  parser.add_argument('-th', '--threshold', required=False, type=int, default=500, help='threshold to start performing ratio test')
-  parser.add_argument('-mr', '--max-ratio', required=False, type=float, default=25.0, help='ratio test parameter R: len(Synth)/len(Obs) < R')
-  parser.add_argument('-ml', '--max-length', required=False, type=int, default=1000, help='maximum rule length for global search')
-  parser.add_argument('-dl', '--dist-low', required=False, type=int, default=2, help='lower bound on string edit distance range')
-  parser.add_argument('-dh', '--dist-high', required=False, type=int, default=10, help='upper bound on string edit distance range')
-  parser.add_argument('-t', '--target', required=True, type=str, help='the domain to target')
-  parser.add_argument('-f', '--hosts', required=True, type=str, help='the observed hosts file')
-  parser.add_argument('-o', '--output', required=True, type=str, help='output filename')
+  parser.add_argument('-th', '--threshold', required=False, type=int, default=500, help='Threshold to start performing ratio test')
+  parser.add_argument('-mr', '--max-ratio', required=False, type=float, default=25.0, help='Ratio test parameter R: len(Synth)/len(Obs) < R')
+  parser.add_argument('-ml', '--max-length', required=False, type=int, default=1000, help='Maximum rule length for global search')
+  parser.add_argument('-dl', '--dist-low', required=False, type=int, default=2, help='Lower bound on string edit distance range')
+  parser.add_argument('-dh', '--dist-high', required=False, type=int, default=10, help='Upper bound on string edit distance range')
+  parser.add_argument('-t', '--target', required=True, type=str, help='The domain to target')
+  parser.add_argument('-f', '--hosts', required=True, type=str, help='The observed hosts file')
+  parser.add_argument('-o', '--output', required=False, type=str, help='Output filename (default: output)', default="output")
   args = vars(parser.parse_args())
 
   logging.info(f'REGULATOR starting: MAX_RATIO={args["max_ratio"]}, THRESHOLD={args["threshold"]}')
@@ -281,10 +288,26 @@ def main():
             elif r not in new_rules:
               logging.error(f'Rule cannot be processed: {r}')
 
-  with open(args['output'], 'w') as handle:
+  #Saving rules with a static name
+  with open(f"{args['target']}.rules", 'w') as handle:
     for rule in new_rules:
       handle.write(f'{rule}\n')
 
+  with open(args['output'], 'w') as handle:
+    for line in new_rules:
+      for item in DankGenerator(line.strip()):
+        handle.write(item.decode('utf-8')+'\n')
+
+  #Sorting and uniquifying files(So we can handle a smaller number of hosts)
+  sort_and_unique(args['output'])
+
+  #Replacing incorrect/malformed subdomains (e.g. test..example.com)
+  with open(args['output'], 'r+') as handle:
+    #Sorting and uniquifying is required since for example before replacing test..example.com, test.example.com could have existed 
+    replaced = sorted(set(map(lambda line: re.sub('\.{2,}', '.', line) ,handle.readlines())))
+  with open(args['output'], 'w') as handle:
+    handle.writelines(replaced)
+    
 
 if __name__ == '__main__':
   main()
